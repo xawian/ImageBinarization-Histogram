@@ -1,7 +1,9 @@
 from PIL import Image
+import matplotlib.pyplot as plt
+import numpy as np
 
 
-def binarization_average(image, treshold): #average of RGB
+def binarization_average(image, treshold):
     for x in range(image.width):
         for y in range(image.height):
             averageRGB = (pix[x, y][1] + pix[x, y][2] + pix[x, y][2]) / 3
@@ -11,7 +13,7 @@ def binarization_average(image, treshold): #average of RGB
                 pix[x, y] = (0, 0, 0)
 
 
-def binarization_R(image, treshold): #binarization on canal R
+def binarization_R(image, treshold):
     for x in range(image.width):
         for y in range(image.height):
             if pix[x,y][0] > treshold:
@@ -20,7 +22,7 @@ def binarization_R(image, treshold): #binarization on canal R
                 pix[x, y] = (0, 0, 0)
 
 
-def binarization_G(image, treshold): #binarization on canal G
+def binarization_G(image, treshold):
     for x in range(image.width):
         for y in range(image.height):
             if pix[x,y][1] > treshold:
@@ -29,7 +31,7 @@ def binarization_G(image, treshold): #binarization on canal G
                 pix[x, y] = (0, 0, 0)
 
 
-def binarization_B(image, treshold): #binarization on canal B
+def binarization_B(image, treshold):
     for x in range(image.width):
         for y in range(image.height):
             if pix[x,y][2] > treshold:
@@ -38,9 +40,66 @@ def binarization_B(image, treshold): #binarization on canal B
                 pix[x, y] = (0, 0, 0)
 
 
+def generate_histogram_R(image):
+    histogram = np.zeros([256])
+    for x in range(image.width):
+        for y in range(image.height):
+            value = int(pix[x, y][0])
+            histogram[value] += 1
+    plt.figure()
+    plt.title("Histogram canal R")
+    plt.bar(np.arange(len(histogram)), histogram)
+    plt.ylabel("Number of Pixels")
+    plt.xlabel("Pixel Value")
+    plt.show()
+
+
+def generate_histogram_G(image):
+    histogram = np.zeros([256])
+    for x in range(image.width):
+        for y in range(image.height):
+            value = int(pix[x, y][1])
+            histogram[value] += 1
+    plt.figure()
+    plt.title("Histogram canal R")
+    plt.bar(np.arange(len(histogram)), histogram)
+    plt.ylabel("Number of Pixels")
+    plt.xlabel("Pixel Value")
+    plt.show()
+
+
+def generate_histogram_B(image):
+    histogram = np.zeros([256])
+    for x in range(image.width):
+        for y in range(image.height):
+            value = int(pix[x, y][2])
+            histogram[value] += 1
+    plt.figure()
+    plt.title("Histogram canal R")
+    plt.bar(np.arange(len(histogram)), histogram)
+    plt.ylabel("Number of Pixels")
+    plt.xlabel("Pixel Value")
+    plt.show()
+
+
+def generate_histogram_average(image):
+    histogram = np.zeros([256])
+    for x in range(image.width):
+        for y in range(image.height):
+            value = int((pix[x, y][0] + pix[x, y][1] + pix[x, y][2]) / 3)
+            histogram[value] += 1
+    plt.figure()
+    plt.title("Histogram canal R")
+    plt.bar(np.arange(len(histogram)), histogram)
+    plt.ylabel("Number of Pixels")
+    plt.xlabel("Pixel Value")
+    plt.show()
+
+
 im = Image.open("samples/baboon.jpg")
 pix = im.load()
-binarization_average(im, 128)
+binarization_average(im,128)
+generate_histogram_average(im)
 im.show()
 
 
