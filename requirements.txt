@@ -1,1 +1,4 @@
-pillow == 9.40
+pillow==9.40
+numpy==1.24.2
+matplotlib==3.7.0
+pysimplegui==4.60.4
