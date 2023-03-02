@@ -81,7 +81,7 @@ def generate_histogram_G(image):
             value = int(pix[x, y][1])
             histogram[value] += 1
     plt.figure()
-    plt.title("Histogram canal R")
+    plt.title("Histogram canal G")
     plt.bar(np.arange(len(histogram)), histogram)
     plt.ylabel("Number of Pixels")
     plt.xlabel("Pixel Value")
@@ -96,7 +96,7 @@ def generate_histogram_B(image):
             value = int(pix[x, y][2])
             histogram[value] += 1
     plt.figure()
-    plt.title("Histogram canal R")
+    plt.title("Histogram canal B")
     plt.bar(np.arange(len(histogram)), histogram)
     plt.ylabel("Number of Pixels")
     plt.xlabel("Pixel Value")
@@ -117,47 +117,73 @@ def generate_histogram_average(image):
     plt.xlabel("Pixel Value")
     plt.show()
 
-# pix = im.load()
-# binarization_average(im,128)
-# generate_histogram_average(im)
-# im.show()
 
 control_gui = sg.Column([
     [sg.Frame('Treshold', layout = [[sg.Slider(range = (0, 255), orientation = 'h', key = 'TRESH')]])],
     [sg.Checkbox('R', key = '-R-', enable_events=True), sg.Checkbox('G', key = '-G-', enable_events=True), sg.Checkbox('B', key = '-B-', enable_events=True),
      sg.Checkbox('Average', key = '-AVG-', enable_events=True)],
-    [sg.Button('Binarization', key = '-BINARIZATION-'), sg.Button('Histogram', key = '-HISTOGRAM-')],
-    [sg.Button('Save image', key = '-SAVE-'), sg.Button('Upload image', key = '-UPLOAD-'), sg.Button('Reset', key = 'RESET')],
+    [sg.Button('Binarization', key = 'BINARIZATION'), sg.Button('Histogram', key = 'HISTOGRAM')],
+    [sg.Button('Save image', key = 'SAVE'), sg.Button('Upload image', key = 'UPLOAD'), sg.Button('Reset', key = 'RESET')],
 ])
 
-image_gui = sg.Column([[sg.Image('samples/lenna.png', key = 'IMAGE')]])
+image_path = 'samples/lenna.png'
+image_gui = sg.Column([[sg.Image(image_path, key = 'IMAGE')]])
 layout = [[control_gui, image_gui]]
-
-original = Image.open('samples/lenna.png')
+original = Image.open(image_path)
 window = sg.Window('Biometrics', layout)
 while True:
     event, values = window.read(timeout = 50)
+
     if event in ['-R-', '-G-', '-B-', '-AVG-']: #only one checkbox
         for key in ['-R-', '-G-', '-B-', '-AVG-']:
             if key != event:
                 window[key].update(False)
+
     if event == sg.WIN_CLOSED:
         break
-    if event == '-BINARIZATION-' and values['-B-'] == True:
+
+    if event == 'BINARIZATION' and values['-B-'] == True:
         binarization_B(original, values['TRESH'])
-    if event == '-BINARIZATION-' and values['-R-'] == True:
+
+    if event == 'BINARIZATION' and values['-R-'] == True:
         binarization_R(original, values['TRESH'])
-    if event == '-BINARIZATION-' and values['-G-'] == True:
+
+    if event == 'BINARIZATION' and values['-G-'] == True:
         binarization_G(original, values['TRESH'])
-    if event == '-BINARIZATION-' and values['-AVG-'] == True:
+
+    if event == 'BINARIZATION' and values['-AVG-'] == True:
         binarization_average(original, values['TRESH'])
-    if event == '-HISTOGRAM-' and values['-AVG-'] == True:
+
+    if event == 'HISTOGRAM' and values['-AVG-'] == True:
         generate_histogram_average(original)
+
+    if event == 'HISTOGRAM' and values['-R-'] == True:
+        generate_histogram_R(original)
+
+    if event == 'HISTOGRAM' and values['-G-'] == True:
+        generate_histogram_G(original)
+
+    if event == 'HISTOGRAM' and values['-B-'] == True:
+        generate_histogram_B(original)
+
     if event == 'RESET':
-        original = Image.open('samples/lenna.png')
+        original = Image.open(image_path)
         bio = BytesIO()
         original.save(bio, format='PNG')
         window['IMAGE'].update(data=bio.getvalue())
+
+    if event == 'SAVE':
+        save_path = sg.popup_get_file('Save', save_as = True, no_window = True) + '.png'
+        original.save(save_path, 'PNG')
+
+    if event == 'UPLOAD':
+        image_path = sg.popup_get_file('Upload', no_window = True)
+        original = Image.open(image_path)
+        bio = BytesIO()
+        original.save(bio, format='PNG')
+        window['IMAGE'].update(data=bio.getvalue())
+
+
 window.close()
 
 
