@@ -117,7 +117,7 @@ def generate_histogram_average(image):
     plt.xlabel("Pixel Value")
     plt.show()
 
-def calculate_LUT(histogram):
+def calculate_LUT(histogram, treshold):
     l_min = 0
     l_max = 255
     for i in range(0, 255):
@@ -128,12 +128,11 @@ def calculate_LUT(histogram):
         if histogram[i] != 0:
             l_max = i
             break
-    a = int( 255 / (l_max - l_min))
     for i in range (0, 256):
-        histogram[i] = int(a * (i - l_min))
+        histogram[i] = int((treshold / (l_max - l_min)) * (i - l_min))
     return histogram
 
-def histogram_streching(image):
+def histogram_streching(image, treshold):
     pix = image.load()
     histogram_red = np.zeros([256], dtype=int)
     histogram_green = np.zeros([256], dtype=int)
@@ -144,9 +143,9 @@ def histogram_streching(image):
             histogram_green[int(pix[x, y][1])] += 1
             histogram_blue[int(pix[x, y][2])] += 1
 
-    LUTred = calculate_LUT(histogram_red)
-    LUTblue = calculate_LUT(histogram_blue)
-    LUTgreen = calculate_LUT(histogram_green)
+    LUTred = calculate_LUT(histogram_red, treshold)
+    LUTblue = calculate_LUT(histogram_blue, treshold)
+    LUTgreen = calculate_LUT(histogram_green, treshold)
     for x in range(image.width):
         for y in range(image.height):
             pix[x,y] = (LUTred[pix[x,y][0]], LUTgreen[pix[x,y][1]], LUTblue[pix[x,y][2]])
@@ -162,7 +161,7 @@ control_gui = sg.Column([
     [sg.Frame('Treshold', layout = [[sg.Slider(range = (0, 255), orientation = 'h', key = 'TRESH')]])],
     [sg.Checkbox('R', key = 'R', enable_events=True), sg.Checkbox('G', key = 'G', enable_events=True), sg.Checkbox('B', key = 'B', enable_events=True),
      sg.Checkbox('Average', key = 'AVG', enable_events=True)],
-    [sg.Button('Binarization', key = 'BINARIZATION'), sg.Button('Histogram', key = 'HISTOGRAM'), sg.Button('Streching Hist', key = 'STRECHING')],
+    [sg.Button('Binarization', key = 'BINARIZATION'), sg.Button('Histogram', key = 'HISTOGRAM'), sg.Button('Streching Histogram', key = 'STRECHING')],
     [sg.Button('Save image', key = 'SAVE'), sg.Button('Upload image', key = 'UPLOAD'), sg.Button('Reset', key = 'RESET')],
 ])
 
@@ -208,7 +207,7 @@ while True:
         generate_histogram_B(original)
 
     if event == 'STRECHING':
-        histogram_streching(original)
+        histogram_streching(original, values['TRESH'])
 
     if event == 'RESET':
         original = Image.open(image_path)
