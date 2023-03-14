@@ -111,18 +111,58 @@ def generate_histogram_average(image):
             value = int((pix[x, y][0] + pix[x, y][1] + pix[x, y][2]) / 3)
             histogram[value] += 1
     plt.figure()
-    plt.title("Histogram canal R")
+    plt.title("Histogram average")
     plt.bar(np.arange(len(histogram)), histogram)
     plt.ylabel("Number of Pixels")
     plt.xlabel("Pixel Value")
     plt.show()
 
+def calculate_LUT(histogram):
+    l_min = 0
+    l_max = 255
+    for i in range(0, 255):
+        if histogram[i] != 0:
+            l_min = i
+            break
+    for i in range(255, 0, -1):
+        if histogram[i] != 0:
+            l_max = i
+            break
+    a = int( 255 / (l_max - l_min))
+    for i in range (0, 256):
+        histogram[i] = int(a * (i - l_min))
+    return histogram
+
+def histogram_streching(image):
+    pix = image.load()
+    histogram_red = np.zeros([256], dtype=int)
+    histogram_green = np.zeros([256], dtype=int)
+    histogram_blue = np.zeros([256], dtype=int)
+    for x in range(image.width):
+        for y in range(image.height):
+            histogram_red[int(pix[x, y][0])] += 1
+            histogram_green[int(pix[x, y][1])] += 1
+            histogram_blue[int(pix[x, y][2])] += 1
+
+    LUTred = calculate_LUT(histogram_red)
+    LUTblue = calculate_LUT(histogram_blue)
+    LUTgreen = calculate_LUT(histogram_green)
+    for x in range(image.width):
+        for y in range(image.height):
+            pix[x,y] = (LUTred[pix[x,y][0]], LUTgreen[pix[x,y][1]], LUTblue[pix[x,y][2]])
+    bio = BytesIO()
+    image.save(bio, format='PNG')
+    window['IMAGE'].update(data=bio.getvalue())
+
+
+
+
 
 control_gui = sg.Column([
     [sg.Frame('Treshold', layout = [[sg.Slider(range = (0, 255), orientation = 'h', key = 'TRESH')]])],
-    [sg.Checkbox('R', key = '-R-', enable_events=True), sg.Checkbox('G', key = '-G-', enable_events=True), sg.Checkbox('B', key = '-B-', enable_events=True),
-     sg.Checkbox('Average', key = '-AVG-', enable_events=True)],
-    [sg.Button('Binarization', key = 'BINARIZATION'), sg.Button('Histogram', key = 'HISTOGRAM')],
+    [sg.Checkbox('R', key = 'R', enable_events=True), sg.Checkbox('G', key = 'G', enable_events=True), sg.Checkbox('B', key = 'B', enable_events=True),
+     sg.Checkbox('Average', key = 'AVG', enable_events=True)],
+    [sg.Button('Binarization', key = 'BINARIZATION'), sg.Button('Histogram', key = 'HISTOGRAM'), sg.Button('Streching Hist', key = 'STRECHING')],
     [sg.Button('Save image', key = 'SAVE'), sg.Button('Upload image', key = 'UPLOAD'), sg.Button('Reset', key = 'RESET')],
 ])
 
@@ -131,40 +171,44 @@ image_gui = sg.Column([[sg.Image(image_path, key = 'IMAGE')]])
 layout = [[control_gui, image_gui]]
 original = Image.open(image_path)
 window = sg.Window('Biometrics', layout)
-while True:
-    event, values = window.read(timeout = 50)
 
-    if event in ['-R-', '-G-', '-B-', '-AVG-']: #only one checkbox
-        for key in ['-R-', '-G-', '-B-', '-AVG-']:
+while True:
+    event, values = window.read(timeout=50)
+
+    if event in ['R', 'G', 'B', 'AVG']: #only one checkbox
+        for key in ['R', 'G', 'B', 'AVG']:
             if key != event:
                 window[key].update(False)
 
     if event == sg.WIN_CLOSED:
         break
 
-    if event == 'BINARIZATION' and values['-B-'] == True:
+    if event == 'BINARIZATION' and values['B'] == True:
         binarization_B(original, values['TRESH'])
 
-    if event == 'BINARIZATION' and values['-R-'] == True:
+    if event == 'BINARIZATION' and values['R'] == True:
         binarization_R(original, values['TRESH'])
 
-    if event == 'BINARIZATION' and values['-G-'] == True:
+    if event == 'BINARIZATION' and values['G'] == True:
         binarization_G(original, values['TRESH'])
 
-    if event == 'BINARIZATION' and values['-AVG-'] == True:
+    if event == 'BINARIZATION' and values['AVG'] == True:
         binarization_average(original, values['TRESH'])
 
-    if event == 'HISTOGRAM' and values['-AVG-'] == True:
+    if event == 'HISTOGRAM' and values['AVG'] == True:
         generate_histogram_average(original)
 
-    if event == 'HISTOGRAM' and values['-R-'] == True:
+    if event == 'HISTOGRAM' and values['R'] == True:
         generate_histogram_R(original)
 
-    if event == 'HISTOGRAM' and values['-G-'] == True:
+    if event == 'HISTOGRAM' and values['G'] == True:
         generate_histogram_G(original)
 
-    if event == 'HISTOGRAM' and values['-B-'] == True:
+    if event == 'HISTOGRAM' and values['B'] == True:
         generate_histogram_B(original)
+
+    if event == 'STRECHING':
+        histogram_streching(original)
 
     if event == 'RESET':
         original = Image.open(image_path)
@@ -185,7 +229,6 @@ while True:
 
 
 window.close()
-
 
 
 
