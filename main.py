@@ -120,15 +120,15 @@ def generate_histogram_average(image):
 def calculate_LUT(histogram, treshold):
     l_min = 0
     l_max = 255
-    for i in range(0, 256):
+    for i in range(0, 255):
         if histogram[i] != 0:
             l_min = i
             break
-    for i in range(256, 0, -1):
+    for i in range(255, 0, -1):
         if histogram[i] != 0:
             l_max = i
             break
-    for i in range (0, 256):
+    for i in range (0, 255):
         histogram[i] = int((treshold / (l_max - l_min)) * (i - l_min))
     return histogram
 
@@ -187,6 +187,25 @@ def histogram_equalization(image):
     image.save(bio, format='PNG')
     window['IMAGE'].update(data=bio.getvalue())
 
+def otsu_binarization(image):
+    pix = image.load()
+    histogram = np.zeros([256])
+    for x in range(image.width):
+        for y in range(image.height):
+            value = int((pix[x, y][0] + pix[x, y][1] + pix[x, y][2]) / 3)
+            histogram[value] += 1
+    n_pixels = np.sum(histogram)
+    p = [x/n_pixels for x in histogram]
+    C0 = np.cumsum(p[:-1])
+    C1 = [sum(p[i+1:]) for i in range(255)]
+    m0 = [sum(i * p[i] / C0[k] for i in range(k + 1)) if C0[k] != 0 else 0 for k in range(255)]
+    m1 = [sum(i * p[i] / C1[k] for i in range(k + 1, 255)) if C1[k] != 0 else 0 for k in range(255)]
+    sigma_squared = [C0[k] * C1[k] * (m0[k] - m1[k]) ** 2 for k in range(255)]
+    k_star = np.argmax(sigma_squared)
+    window['TRESH'].update(value=k_star)
+
+
+
 
 
 
@@ -196,7 +215,7 @@ control_gui = sg.Column([
     [sg.Checkbox('R', key = 'R', enable_events=True), sg.Checkbox('G', key = 'G', enable_events=True), sg.Checkbox('B', key = 'B', enable_events=True),
      sg.Checkbox('Average', key = 'AVG', enable_events=True)],
     [sg.Button('Binarization', key = 'BINARIZATION'), sg.Button('Histogram', key = 'HISTOGRAM'), sg.Button('Histogram Streching', key = 'STRECHING')],
-    [sg.Button('Histogram Equalization', key = 'EQ')],
+    [sg.Button('Histogram Equalization', key = 'EQ'), sg.Button('Otsu', key = 'OTSU')],
     [sg.Button('Save image', key = 'SAVE'), sg.Button('Upload image', key = 'UPLOAD'), sg.Button('Reset', key = 'RESET')],
 ])
 
@@ -243,6 +262,9 @@ while True:
 
     if event == 'EQ':
         histogram_equalization(original)
+
+    if event == 'OTSU':
+        otsu_binarization(original)
 
     if event == 'STRECHING':
         histogram_streching(original, values['TRESH'])
