@@ -2,6 +2,8 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import PySimpleGUI as sg
+from scipy.ndimage import uniform_filter
+from math import sqrt
 from io import BytesIO
 
 
@@ -202,8 +204,90 @@ def otsu_binarization(image):
     m1 = [sum(i * p[i] / C1[k] for i in range(k + 1, 255)) if C1[k] != 0 else 0 for k in range(255)]
     sigma_squared = [C0[k] * C1[k] * (m0[k] - m1[k]) ** 2 for k in range(255)]
     k_star = np.argmax(sigma_squared)
+    binarization_average(original, k_star)
     window['TRESH'].update(value=k_star)
 
+def niblack_binarization(image, window_size, k):
+    # Convert the image to grayscale
+    gray_image = image.convert('L')
+    gray_np = np.asarray(gray_image, dtype=np.float64)
+
+    # Calculate the local mean and standard deviation using a window_size x window_size window
+    mean_img = uniform_filter(gray_np, (window_size, window_size))
+    sqr_img = uniform_filter(gray_np ** 2, (window_size, window_size))
+    stddev_img = np.sqrt(sqr_img - mean_img ** 2)
+
+    # Calculate the Niblack threshold for each pixel
+    threshold_img = mean_img + k * stddev_img
+
+    # Binarize the image using the Niblack threshold
+    binary_image = np.zeros_like(gray_np, dtype=np.uint8)
+    binary_image[gray_np > threshold_img] = 255
+
+    # Convert the binary image back to a PIL Image
+    binary_pil_image = Image.fromarray(binary_image)
+
+    # Update the image in the GUI
+    bio = BytesIO()
+    binary_pil_image.save(bio, format='PNG')
+    window['IMAGE'].update(data=bio.getvalue())
+
+
+
+def sauvola_binarization(image, window_size, k, R=128):
+    # Convert the image to grayscale
+    gray_image = image.convert('L')
+    gray_np = np.asarray(gray_image, dtype=np.float64)
+
+    # Calculate the local mean and standard deviation using a window_size x window_size window
+    mean_img = uniform_filter(gray_np, (window_size, window_size))
+    sqr_img = uniform_filter(gray_np ** 2, (window_size, window_size))
+    stddev_img = np.sqrt(sqr_img - mean_img ** 2)
+
+    # Calculate the Sauvola threshold for each pixel
+    threshold_img = mean_img * (1 + k * (stddev_img / R - 1))
+
+    # Binarize the image using the Sauvola threshold
+    binary_image = np.zeros_like(gray_np, dtype=np.uint8)
+    binary_image[gray_np > threshold_img] = 255
+
+    # Convert the binary image back to a PIL Image
+    binary_pil_image = Image.fromarray(binary_image)
+
+    # Update the image in the GUI
+    bio = BytesIO()
+    binary_pil_image.save(bio, format='PNG')
+    window['IMAGE'].update(data=bio.getvalue())
+
+
+def bernsen(image, neighbourhood_size, contrast_threshold, mid_gray_value):
+    image = image.convert("L")
+    pix = image.load()
+    new_image = Image.new('RGB', image.size)
+    new_pix = new_image.load()
+    N = neighbourhood_size // 2
+    width, height = image.size
+    for x in range(width):
+        for y in range(height):
+            neighbourhood = []
+            for i in range(max(0, x - N), min(width, x + N + 1)):
+                for j in range(max(0, y - N), min(height, y + N + 1)):
+                    neighbourhood.append(pix[i, j])
+            max_val = np.max(neighbourhood)
+            min_val = np.min(neighbourhood)
+            if max_val - min_val < contrast_threshold:
+                if mid_gray_value <= 128:
+                    new_pix[x, y] = (0, 0, 0)
+                else:
+                    new_pix[x, y] = (255, 255, 255)
+            else:
+                if pix[x, y] >= (max_val + min_val) // 2:
+                    new_pix[x, y] = (255, 255, 255)
+                else:
+                    new_pix[x, y] = (0, 0, 0)
+    bio = BytesIO()
+    new_image.save(bio, format='PNG')
+    window['IMAGE'].update(data=bio.getvalue())
 
 
 
@@ -215,7 +299,8 @@ control_gui = sg.Column([
     [sg.Checkbox('R', key = 'R', enable_events=True), sg.Checkbox('G', key = 'G', enable_events=True), sg.Checkbox('B', key = 'B', enable_events=True),
      sg.Checkbox('Average', key = 'AVG', enable_events=True)],
     [sg.Button('Binarization', key = 'BINARIZATION'), sg.Button('Histogram', key = 'HISTOGRAM'), sg.Button('Histogram Streching', key = 'STRECHING')],
-    [sg.Button('Histogram Equalization', key = 'EQ'), sg.Button('Otsu', key = 'OTSU')],
+    [sg.Button('Histogram Equalization', key = 'EQ'), sg.Button('Otsu', key = 'OTSU'), sg.Button('Niblack', key = 'NIBLACK')],
+    [sg.Button('Sauvola', key = 'SAUVOLA'), sg.Button('Bersen', key='BERSEN')],
     [sg.Button('Save image', key = 'SAVE'), sg.Button('Upload image', key = 'UPLOAD'), sg.Button('Reset', key = 'RESET')],
 ])
 
@@ -265,6 +350,15 @@ while True:
 
     if event == 'OTSU':
         otsu_binarization(original)
+
+    if event == 'BERSEN':
+        bernsen(original, 15, 30, 128)
+
+    if event == 'NIBLACK':
+        niblack_binarization(original, window_size=15, k=-0.2)
+
+    if event == 'SAUVOLA':
+        sauvola_binarization(original, window_size=15, k=0.2, R=128)
 
     if event == 'STRECHING':
         histogram_streching(original, values['TRESH'])
