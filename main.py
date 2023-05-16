@@ -290,6 +290,69 @@ def bernsen(image, neighbourhood_size, contrast_threshold, mid_gray_value):
     window['IMAGE'].update(data=bio.getvalue())
 
 
+def median_filter(image, filter_size):
+    # Convert the image to grayscale and then to a NumPy array
+    data = np.asarray(image.convert('L'))
+
+    temp = []
+    indexer = filter_size // 2
+    height, width = data.shape
+    data_final = np.zeros((height, width))
+    for i in range(height):
+
+        for j in range(width):
+
+            for z in range(filter_size):
+                if i + z - indexer < 0 or i + z - indexer > height - 1:
+                    for c in range(filter_size):
+                        temp.append(0)
+                else:
+                    if j + z - indexer < 0 or j + indexer > width - 1:
+                        temp.append(0)
+                    else:
+                        for k in range(filter_size):
+                            temp.append(data[i + z - indexer][j + k - indexer])
+            temp.sort()
+            data_final[i][j] = temp[len(temp) // 2]
+            temp = []
+
+    # Convert the float array to uint8
+    data_final = (data_final * 255).astype(np.uint8)
+
+    # Create an Image object from the NumPy array
+    img = Image.fromarray(data_final)
+
+    # Save the image
+    bio = BytesIO()
+    img.save(bio, format='PNG')
+    window['IMAGE'].update(data=bio.getvalue())
+
+def pixelate(image, pixel_size):
+    # Convert the image to a NumPy array
+    data = np.asarray(image)
+
+    # Get the size of the image
+    height, width, _ = data.shape
+
+    # Create a new image with the same size as the original image
+    new_image = Image.new('RGB', (width, height))
+
+    # Loop over the image and replace each pixel
+    for i in range(0, height, pixel_size):
+        for j in range(0, width, pixel_size):
+            # Get the color of the pixel
+            r, g, b = data[i][j]
+            # Draw a rectangle with the color of the pixel
+            new_image.paste(Image.new('RGB', (pixel_size, pixel_size), (r, g, b)), (j, i))
+
+    # Save the pixelated image
+    bio = BytesIO()
+    new_image.save(bio, format='PNG')
+    window['IMAGE'].update(data=bio.getvalue())
+
+
+
+
 
 
 
@@ -300,7 +363,8 @@ control_gui = sg.Column([
      sg.Checkbox('Average', key = 'AVG', enable_events=True)],
     [sg.Button('Binarization', key = 'BINARIZATION'), sg.Button('Histogram', key = 'HISTOGRAM'), sg.Button('Histogram Streching', key = 'STRECHING')],
     [sg.Button('Histogram Equalization', key = 'EQ'), sg.Button('Otsu', key = 'OTSU'), sg.Button('Niblack', key = 'NIBLACK')],
-    [sg.Button('Sauvola', key = 'SAUVOLA'), sg.Button('Bersen', key='BERSEN')],
+    [sg.Button('Sauvola', key = 'SAUVOLA'), sg.Button('Bersen', key='BERSEN'), sg.Button('Median', key='MEDIAN'), sg.Button('Pixelate', key="PIXELATE"),
+     sg.Button('Kuwahara', key='KUWAHARA')],
     [sg.Button('Save image', key = 'SAVE'), sg.Button('Upload image', key = 'UPLOAD'), sg.Button('Reset', key = 'RESET')],
 ])
 
@@ -348,6 +412,10 @@ while True:
     if event == 'EQ':
         histogram_equalization(original)
 
+    if event == 'KUWAHARA':
+        # kuwahara_filter(original, 5)
+        pass
+
     if event == 'OTSU':
         otsu_binarization(original)
 
@@ -363,6 +431,9 @@ while True:
     if event == 'STRECHING':
         histogram_streching(original, values['TRESH'])
 
+    if event == 'MEDIAN':
+        median_filter(original, 3)
+
     if event == 'RESET':
         original = Image.open(image_path)
         bio = BytesIO()
@@ -372,6 +443,9 @@ while True:
     if event == 'SAVE':
         save_path = sg.popup_get_file('Save', save_as = True, no_window = True) + '.png'
         original.save(save_path, 'PNG')
+
+    if event == 'PIXELATE':
+        pixelate(original, 10)
 
     if event == 'UPLOAD':
         image_path = sg.popup_get_file('Upload', no_window = True)
